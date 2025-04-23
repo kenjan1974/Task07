@@ -1,5 +1,7 @@
 import requests
 import json
+import sqlite3
+from datetime import datetime
 
 url = "https://raw.githubusercontent.com/kiang/pharmacies/master/json/points.json"
 response = requests.get(url)
@@ -47,5 +49,67 @@ pharmacy_county_masks = dict(sorted(pharmacy_county_masks.items(), key=lambda it
 print("\n各county口罩數量:")
 for county, masks in pharmacy_county_masks.items():
     print(f"County: {county}, Adult Masks: {masks['mask_adult']}, Child Masks: {masks['mask_child']}")
+
+# 建立 SQLite 連線與資料表
+conn = sqlite3.connect('pharmacy.db')
+cursor = conn.cursor()
+
+# 建立藥局數量資料表
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS pharmacy_count (
+    county TEXT PRIMARY KEY,
+    count INTEGER,
+    updated_at TEXT
+)
+''')
+
+# 建立口罩剩餘數量資料表
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS mask_remain (
+    county TEXT PRIMARY KEY,
+    mask_adult INTEGER,
+    mask_child INTEGER,
+    updated_at TEXT
+)
+''')
+
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+# 儲存藥局數量到資料庫
+for county, count in pharmacy_county_count.items():
+    cursor.execute('''
+    INSERT OR REPLACE INTO pharmacy_count (county, count, updated_at)
+    VALUES (?, ?, ?)
+    ''', (county, count, now))
+
+# 儲存口罩剩餘數量到資料庫
+for county, masks in pharmacy_county_masks.items():
+    cursor.execute('''
+    INSERT OR REPLACE INTO mask_remain (county, mask_adult, mask_child, updated_at)
+    VALUES (?, ?, ?, ?)
+    ''', (county, masks['mask_adult'], masks['mask_child'], now))
+
+conn.commit()
+conn.close()
+
+# 從資料庫取出各地區口罩數量，並先在資料庫依據成人口罩數量排序(降冪)
+conn = sqlite3.connect('pharmacy.db')
+cursor = conn.cursor()
+cursor.execute('''
+SELECT county, mask_adult, mask_child FROM mask_remain ORDER BY mask_adult DESC
+''')
+rows = cursor.fetchall()    
+conn.close()
+
+# 列印從資料庫取出的各地區口罩數量
+print("\n從資料庫取出的各地區口罩數量:")
+for row in rows:
+    county, mask_adult, mask_child = row
+    print(f"County: {county}, Adult Masks: {mask_adult}, Child Masks: {mask_child}")
+
+
+
     
-    
+
+
+
