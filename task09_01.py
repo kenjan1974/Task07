@@ -13,6 +13,7 @@ for h3 in soup.find_all('h3', class_='rounded-thumb__title'):
         news_links.append('https://udn.com' + a_tag['href'])
 
 # 逐一請求每則新聞內容
+news = []
 for link in news_links:
     news_resp = requests.get(link)
     news_soup = BeautifulSoup(news_resp.text, 'html.parser')
@@ -20,5 +21,6 @@ for link in news_links:
     paragraphs = news_soup.find_all('div', class_='article-content__paragraph')
     print(f'新聞連結: {link}')
     for news_content in paragraphs:
+        news.append(news_content.get_text(strip=True).replace('\n', ' '))
         print(news_content.get_text(strip=True))
     print('-' * 40)
