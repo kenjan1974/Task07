@@ -18,9 +18,24 @@ for link in news_links:
     news_resp = requests.get(link)
     news_soup = BeautifulSoup(news_resp.text, 'html.parser')
     # 取得所有新聞段落內容
-    paragraphs = news_soup.find_all('div', class_='article-content__paragraph')
+    paragraphs = news_soup.find('div', class_='article-content__paragraph')
+    section = paragraphs.find('section', class_='article-content__editor')
     print(f'新聞連結: {link}')
-    for news_content in paragraphs:
-        news.append(news_content.get_text(strip=True).replace('\n', ' '))
-        print(news_content.get_text(strip=True))
-    print('-' * 40)
+    if section:
+        # 移除所有 <figure> 標籤及其內容
+        for fig in section.find_all('figure'):
+            fig.decompose()
+        # 移除指定 style 的 <div> 及其內容
+        for div in section.find_all('div', style=lambda s: s and s.startswith('position: relative;margin:50px 0 0;')):
+            div.decompose()
+        article_paragraphs = []
+        for p in section.find_all('p'):
+            content = p.get_text(strip=True).replace('\n', ' ')
+            article_paragraphs.append(content)
+        article_content = ' '.join(article_paragraphs)
+        news.append(article_content)
+
+# 列印所有新聞內容
+for article in news:
+    print(article)
+    print('=' * 40)
